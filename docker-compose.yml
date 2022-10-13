@@ -1,0 +1,63 @@
+version: "3.2"
+services:
+  faveo-apache:
+    build:
+      context: ./apache
+    image: ${DOMAINNAME}/faveo-dev-apache2
+    container_name: ${DOMAINNAME}-apache
+    networks:
+      - faveo-network
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
+      - ./${HOST_ROOT_DIR}:/var/www/html/
+      - ./ssl/faveolocal.crt:/var/imported/ssl/cert.pem
+      - ./ssl/private.key:/var/imported/ssl/privkey.pem
+      - ./ssl/faveorootCA.crt:/var/imported/ssl/root.pem
+    restart: always
+  faveo-mariadb:
+    image: mariadb:10.6
+    container_name: ${DOMAINNAME}-mariadb
+    volumes:
+      - db-volume:/var/lib/mysql
+    networks:
+      - faveo-network
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_TCP_PORT: 3306
+    ports:
+    - 3306:3306
+    restart: on-failure
+  faveo-redis:
+      image: redis
+      container_name: ${DOMAINNAME}-redis
+      restart: always
+      networks:
+        - faveo-network
+  faveo-supervisor:
+      image: ladybird/faveo-supervisor-v2
+      container_name: ${DOMAINNAME}-supervisor
+      volumes:
+        - ./${HOST_ROOT_DIR}/:/var/www/html/
+      ports:
+        - "9001:9001"
+      depends_on:
+        - faveo-redis
+        - faveo-mariadb
+      networks:
+        - faveo-network
+      restart: on-failure
+volumes:
+  db-volume:
+    external: 
+      name: ${DOMAINNAME}-faveoDB
+  
+networks:
+    faveo-network:
+      external:
+        name: ${DOMAINNAME}-faveo
