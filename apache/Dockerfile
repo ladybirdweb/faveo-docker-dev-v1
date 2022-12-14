@@ -1,4 +1,4 @@
-FROM ladybird/faveo-dev-apache2
+FROM ladybird/faveo-dev-apache2-v2
 
 RUN apt-get update && apt-get upgrade -y
 
